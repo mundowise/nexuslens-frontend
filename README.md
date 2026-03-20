@@ -1,6 +1,6 @@
 # NexusLens Frontend
 
-SPA for NexusLens. Three modes: analyze documents (Lens), explore connections in 3D (Nexus), and track deadlines (Timeline).
+SPA for NexusLens. Three modes: analyze documents (Lens), explore connections in 3D (Nexus), and track deadlines (Timeline). Uses OpenAI GPT-4o for document analysis via the backend API.
 
 ## Stack
 
@@ -15,6 +15,7 @@ SPA for NexusLens. Three modes: analyze documents (Lens), explore connections in
 - **axios** — HTTP client
 - **Howler.js** — subtle UI sounds
 - **Lucide React** — icons
+- Custom NexusLens logo (SVG) used across splash screen, navbar, and auth pages
 
 ## Setup
 

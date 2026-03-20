@@ -1,0 +1,87 @@
+{
+  "app": {
+    "name": "NexusLens"
+  },
+  "nav": {
+    "nexus": "Nexus",
+    "lens": "Lens",
+    "timeline": "Timeline",
+    "upload": "Upload document",
+    "logout": "Sign out"
+  },
+  "auth": {
+    "login": "Sign in",
+    "register": "Create account",
+    "email": "Email address",
+    "password": "Password",
+    "confirm_password": "Confirm password",
+    "passwords_mismatch": "Passwords don't match",
+    "no_account": "Don't have an account?",
+    "has_account": "Already have an account?",
+    "error_invalid": "Invalid credentials",
+    "error_exists": "This email is already registered"
+  },
+  "lens": {
+    "title": "Document analysis",
+    "risks": "Risks",
+    "obligations": "Obligations",
+    "deadlines": "Deadlines",
+    "costs": "Hidden costs",
+    "questions": "Suggested questions",
+    "original_text": "Original text",
+    "explanation": "Simple explanation",
+    "no_findings": "No findings detected",
+    "risk_score": "Risk score",
+    "compare": "Compare documents",
+    "page": "Page",
+    "recommendation": "Recommendation",
+    "pdf_unavailable": "PDF not available",
+    "pdf_loading": "Loading PDF...",
+    "pdf_error": "Failed to load PDF",
+    "show_pdfs": "Show PDFs",
+    "hide_pdfs": "Hide PDFs",
+    "doc_a": "Document A",
+    "doc_b": "Document B",
+    "reanalyze": "Re-analyze"
+  },
+  "nexus": {
+    "connections": "connections",
+    "double_click": "Double click for full analysis",
+    "connection_found": "Connection found",
+    "no_documents": "Upload your first document to get started",
+    "webgl_unavailable": "WebGL unavailable. Showing fallback view."
+  },
+  "timeline": {
+    "title": "Timeline",
+    "alerts": "Alerts",
+    "upcoming": "Upcoming events",
+    "no_events": "No events on the calendar",
+    "recurring": "Recurring",
+    "related": "Related to"
+  },
+  "upload": {
+    "title": "Upload document",
+    "drag": "Drop your document here",
+    "or": "or",
+    "browse": "Select a file",
+    "formats": "PDF, Word, PNG, JPG or TIFF. Max 50MB",
+    "analyzing": "Analyzing document...",
+    "parsing": "Extracting text",
+    "ai_analysis": "AI analysis",
+    "embeddings": "Generating connections",
+    "connections": "Discovering relationships",
+    "timeline": "Extracting timeline",
+    "done": "Analysis complete"
+  },
+  "common": {
+    "loading": "Loading...",
+    "error": "Something went wrong",
+    "retry": "Retry",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "confirm_delete": "Are you sure you want to delete this?",
+    "documents": "documents",
+    "findings": "findings",
+    "back": "Back"
+  }
+}

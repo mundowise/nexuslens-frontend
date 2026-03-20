@@ -1,0 +1,87 @@
+{
+  "app": {
+    "name": "NexusLens"
+  },
+  "nav": {
+    "nexus": "Nexus",
+    "lens": "Lens",
+    "timeline": "Timeline",
+    "upload": "Subir documento",
+    "logout": "Cerrar sesión"
+  },
+  "auth": {
+    "login": "Iniciar sesión",
+    "register": "Crear cuenta",
+    "email": "Correo electrónico",
+    "password": "Contraseña",
+    "confirm_password": "Confirmar contraseña",
+    "passwords_mismatch": "Las contraseñas no coinciden",
+    "no_account": "¿No tienes cuenta?",
+    "has_account": "¿Ya tienes cuenta?",
+    "error_invalid": "Credenciales inválidas",
+    "error_exists": "Este correo ya está registrado"
+  },
+  "lens": {
+    "title": "Análisis de documento",
+    "risks": "Riesgos",
+    "obligations": "Obligaciones",
+    "deadlines": "Fechas límite",
+    "costs": "Costos ocultos",
+    "questions": "Preguntas sugeridas",
+    "original_text": "Texto original",
+    "explanation": "Explicación simple",
+    "no_findings": "No se encontraron hallazgos",
+    "risk_score": "Puntuación de riesgo",
+    "compare": "Comparar documentos",
+    "page": "Página",
+    "recommendation": "Recomendación",
+    "pdf_unavailable": "PDF no disponible",
+    "pdf_loading": "Cargando PDF...",
+    "pdf_error": "Error al cargar PDF",
+    "show_pdfs": "Ver PDFs",
+    "hide_pdfs": "Ocultar PDFs",
+    "doc_a": "Documento A",
+    "doc_b": "Documento B",
+    "reanalyze": "Re-analizar"
+  },
+  "nexus": {
+    "connections": "conexiones",
+    "double_click": "Doble click para análisis completo",
+    "connection_found": "Conexión encontrada",
+    "no_documents": "Sube tu primer documento para comenzar",
+    "webgl_unavailable": "WebGL no disponible. Mostrando vista alternativa."
+  },
+  "timeline": {
+    "title": "Línea temporal",
+    "alerts": "Alertas",
+    "upcoming": "Próximos eventos",
+    "no_events": "No hay eventos en el calendario",
+    "recurring": "Recurrente",
+    "related": "Relacionado con"
+  },
+  "upload": {
+    "title": "Subir documento",
+    "drag": "Arrastra tu documento aquí",
+    "or": "o",
+    "browse": "Selecciona un archivo",
+    "formats": "PDF, Word, PNG, JPG o TIFF. Máximo 50MB",
+    "analyzing": "Analizando documento...",
+    "parsing": "Extrayendo texto",
+    "ai_analysis": "Analizando con IA",
+    "embeddings": "Generando conexiones",
+    "connections": "Descubriendo relaciones",
+    "timeline": "Extrayendo línea temporal",
+    "done": "Análisis completado"
+  },
+  "common": {
+    "loading": "Cargando...",
+    "error": "Algo salió mal",
+    "retry": "Reintentar",
+    "cancel": "Cancelar",
+    "delete": "Eliminar",
+    "confirm_delete": "¿Seguro que quieres eliminar esto?",
+    "documents": "documentos",
+    "findings": "hallazgos",
+    "back": "Volver"
+  }
+}

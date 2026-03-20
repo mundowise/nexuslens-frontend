@@ -1,0 +1,269 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme {
+  --color-surface-0: #09090b;
+  --color-surface-1: #111114;
+  --color-surface-2: #18181c;
+  --color-surface-3: #222228;
+  --color-surface-4: #2a2a32;
+
+  --color-text-primary: #f0f0f5;
+  --color-text-secondary: #a0a0b2;
+  --color-text-muted: #5c5c72;
+
+  --color-accent: #6d5cff;
+
+  --color-border: rgba(255, 255, 255, 0.08);
+  --color-border-hover: rgba(255, 255, 255, 0.14);
+  --color-fill-subtle: rgba(255, 255, 255, 0.05);
+  --color-fill-hover: rgba(255, 255, 255, 0.08);
+
+  --color-severity-critical: #ef4444;
+  --color-severity-warning: #f59e0b;
+  --color-severity-info: #3b82f6;
+  --color-severity-ok: #10b981;
+
+  --font-display: 'Outfit', system-ui, sans-serif;
+  --font-body: 'DM Sans', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+@layer base {
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    font-family: var(--font-body);
+    background: var(--color-surface-0);
+    color: var(--color-text-primary);
+    min-height: 100dvh;
+    overflow-x: hidden;
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
+
+  body.light {
+    --color-surface-0: #fafafa;
+    --color-surface-1: #f4f4f5;
+    --color-surface-2: #e8e8ec;
+    --color-surface-3: #d4d4dc;
+    --color-surface-4: #c4c4cc;
+    --color-text-primary: #09090b;
+    --color-text-secondary: #3f3f46;
+    --color-text-muted: #71717a;
+    --color-border: rgba(0, 0, 0, 0.1);
+    --color-border-hover: rgba(0, 0, 0, 0.18);
+    --color-fill-subtle: rgba(0, 0, 0, 0.04);
+    --color-fill-hover: rgba(0, 0, 0, 0.07);
+  }
+
+  #root {
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+  }
+}
+
+@layer components {
+  .glass {
+    backdrop-filter: blur(24px) saturate(1.4);
+    background: var(--color-fill-subtle);
+    border: 1px solid var(--color-border);
+    border-radius: 1rem;
+    transition: background 0.2s ease, border-color 0.2s ease;
+  }
+
+  .glass:hover {
+    background: var(--color-fill-hover);
+    border-color: var(--color-border-hover);
+  }
+
+  body.light .glass {
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  }
+
+  .input-field {
+    background: var(--color-fill-subtle);
+    border: 1px solid var(--color-border);
+    color: var(--color-text-primary);
+    transition: border-color 0.2s ease;
+  }
+
+  .input-field:focus {
+    outline: none;
+    border-color: var(--color-accent);
+    box-shadow: 0 0 0 2px rgba(109, 92, 255, 0.2);
+  }
+
+  .btn-ghost {
+    transition: background 0.15s ease;
+  }
+
+  .btn-ghost:hover {
+    background: var(--color-fill-hover);
+  }
+
+  .severity-critical {
+    border-left: 3px solid var(--color-severity-critical);
+    box-shadow: inset 4px 0 12px -4px rgba(239, 68, 68, 0.15);
+  }
+
+  .severity-warning {
+    border-left: 3px solid var(--color-severity-warning);
+    box-shadow: inset 4px 0 12px -4px rgba(245, 158, 11, 0.15);
+  }
+
+  .severity-info {
+    border-left: 3px solid var(--color-severity-info);
+    box-shadow: inset 4px 0 12px -4px rgba(59, 130, 246, 0.15);
+  }
+
+  .severity-ok {
+    border-left: 3px solid var(--color-severity-ok);
+    box-shadow: inset 4px 0 12px -4px rgba(16, 185, 129, 0.15);
+  }
+
+  .line-vertical {
+    background: var(--color-border);
+  }
+
+  .nexus-space {
+    background:
+      radial-gradient(ellipse at 25% 15%, rgba(60, 30, 120, 0.5) 0%, transparent 50%),
+      radial-gradient(ellipse at 75% 80%, rgba(20, 40, 100, 0.45) 0%, transparent 45%),
+      radial-gradient(ellipse at 50% 45%, rgba(40, 20, 80, 0.35) 0%, transparent 55%),
+      radial-gradient(circle at 10% 90%, rgba(80, 20, 100, 0.25) 0%, transparent 35%),
+      radial-gradient(circle at 90% 10%, rgba(20, 50, 120, 0.2) 0%, transparent 30%),
+      radial-gradient(ellipse at 60% 30%, rgba(30, 15, 90, 0.3) 0%, transparent 40%),
+      #030306;
+    position: relative;
+    overflow: hidden;
+  }
+
+  body.light .nexus-space {
+    background:
+      radial-gradient(ellipse at 25% 15%, rgba(109, 92, 255, 0.15) 0%, transparent 50%),
+      radial-gradient(ellipse at 75% 80%, rgba(59, 130, 246, 0.12) 0%, transparent 45%),
+      radial-gradient(ellipse at 50% 45%, rgba(139, 92, 246, 0.1) 0%, transparent 55%),
+      radial-gradient(circle at 10% 90%, rgba(109, 92, 255, 0.08) 0%, transparent 35%),
+      radial-gradient(circle at 90% 10%, rgba(59, 130, 246, 0.06) 0%, transparent 30%),
+      #eef0f8;
+  }
+
+  .nexus-space::before,
+  .nexus-space::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+
+  .nexus-space::before {
+    background-image:
+      radial-gradient(3px 3px at 8% 12%, rgba(255,255,255,0.9), transparent),
+      radial-gradient(2px 2px at 22% 28%, rgba(255,255,255,0.7), transparent),
+      radial-gradient(4px 4px at 38% 75%, rgba(180,200,255,1), transparent),
+      radial-gradient(2px 2px at 52% 8%, rgba(255,255,255,0.8), transparent),
+      radial-gradient(3px 3px at 68% 52%, rgba(255,255,255,0.6), transparent),
+      radial-gradient(4px 4px at 82% 88%, rgba(160,180,255,0.9), transparent),
+      radial-gradient(2px 2px at 92% 35%, rgba(255,255,255,0.7), transparent),
+      radial-gradient(3px 3px at 5% 55%, rgba(255,255,255,0.8), transparent),
+      radial-gradient(2px 2px at 32% 92%, rgba(255,255,255,0.6), transparent),
+      radial-gradient(4px 4px at 72% 22%, rgba(200,190,255,0.8), transparent),
+      radial-gradient(2px 2px at 15% 42%, rgba(255,255,255,0.7), transparent),
+      radial-gradient(3px 3px at 48% 68%, rgba(255,255,255,0.5), transparent),
+      radial-gradient(2px 2px at 85% 58%, rgba(255,255,255,0.8), transparent),
+      radial-gradient(3px 3px at 42% 25%, rgba(255,255,255,0.6), transparent),
+      radial-gradient(5px 5px at 18% 78%, rgba(180,160,255,0.7), transparent),
+      radial-gradient(2px 2px at 58% 82%, rgba(255,255,255,0.5), transparent),
+      radial-gradient(3px 3px at 78% 5%, rgba(255,255,255,0.7), transparent),
+      radial-gradient(2px 2px at 95% 65%, rgba(255,255,255,0.6), transparent),
+      radial-gradient(4px 4px at 28% 48%, rgba(220,210,255,0.7), transparent),
+      radial-gradient(3px 3px at 62% 38%, rgba(255,255,255,0.5), transparent);
+    background-size: 400px 400px;
+    animation: drift 90s linear infinite;
+    z-index: 0;
+  }
+
+  .nexus-space::after {
+    background-image:
+      radial-gradient(3px 3px at 12% 18%, rgba(255,255,255,0.8), transparent),
+      radial-gradient(5px 5px at 35% 62%, rgba(180,200,255,0.9), transparent),
+      radial-gradient(2px 2px at 45% 40%, rgba(255,255,255,0.6), transparent),
+      radial-gradient(3px 3px at 65% 15%, rgba(255,255,255,0.7), transparent),
+      radial-gradient(2px 2px at 75% 75%, rgba(255,255,255,0.7), transparent),
+      radial-gradient(4px 4px at 88% 30%, rgba(200,220,255,0.8), transparent),
+      radial-gradient(3px 3px at 25% 85%, rgba(160,170,255,0.8), transparent),
+      radial-gradient(2px 2px at 40% 10%, rgba(255,255,255,0.6), transparent),
+      radial-gradient(3px 3px at 55% 55%, rgba(255,255,255,0.7), transparent),
+      radial-gradient(5px 5px at 70% 42%, rgba(190,180,255,0.6), transparent),
+      radial-gradient(2px 2px at 3% 35%, rgba(255,255,255,0.7), transparent),
+      radial-gradient(3px 3px at 92% 85%, rgba(255,255,255,0.5), transparent),
+      radial-gradient(4px 4px at 50% 90%, rgba(200,180,255,0.7), transparent),
+      radial-gradient(2px 2px at 18% 5%, rgba(255,255,255,0.8), transparent),
+      radial-gradient(3px 3px at 82% 50%, rgba(255,255,255,0.5), transparent);
+    background-size: 500px 500px;
+    animation: drift 140s linear infinite reverse;
+    z-index: 0;
+  }
+
+  body.light .nexus-space::before {
+    background-image:
+      radial-gradient(4px 4px at 8% 12%, rgba(109,92,255,0.6), transparent),
+      radial-gradient(3px 3px at 22% 28%, rgba(59,130,246,0.5), transparent),
+      radial-gradient(5px 5px at 38% 75%, rgba(109,92,255,0.7), transparent),
+      radial-gradient(3px 3px at 52% 8%, rgba(139,92,246,0.5), transparent),
+      radial-gradient(4px 4px at 68% 52%, rgba(59,130,246,0.5), transparent),
+      radial-gradient(5px 5px at 82% 88%, rgba(109,92,255,0.6), transparent),
+      radial-gradient(3px 3px at 92% 35%, rgba(59,130,246,0.5), transparent),
+      radial-gradient(4px 4px at 5% 55%, rgba(139,92,246,0.5), transparent),
+      radial-gradient(3px 3px at 32% 92%, rgba(59,130,246,0.6), transparent),
+      radial-gradient(4px 4px at 72% 22%, rgba(109,92,255,0.5), transparent),
+      radial-gradient(3px 3px at 15% 42%, rgba(59,130,246,0.4), transparent),
+      radial-gradient(5px 5px at 48% 68%, rgba(139,92,246,0.6), transparent),
+      radial-gradient(3px 3px at 85% 58%, rgba(109,92,255,0.5), transparent),
+      radial-gradient(4px 4px at 42% 25%, rgba(59,130,246,0.5), transparent),
+      radial-gradient(5px 5px at 18% 78%, rgba(109,92,255,0.7), transparent),
+      radial-gradient(3px 3px at 60% 40%, rgba(139,92,246,0.4), transparent),
+      radial-gradient(4px 4px at 78% 65%, rgba(59,130,246,0.5), transparent),
+      radial-gradient(3px 3px at 28% 15%, rgba(109,92,255,0.5), transparent);
+    background-size: 400px 400px;
+  }
+
+  body.light .nexus-space::after {
+    background-image:
+      radial-gradient(4px 4px at 12% 18%, rgba(109,92,255,0.5), transparent),
+      radial-gradient(5px 5px at 35% 62%, rgba(59,130,246,0.6), transparent),
+      radial-gradient(3px 3px at 45% 40%, rgba(139,92,246,0.4), transparent),
+      radial-gradient(4px 4px at 65% 15%, rgba(59,130,246,0.5), transparent),
+      radial-gradient(3px 3px at 75% 75%, rgba(109,92,255,0.5), transparent),
+      radial-gradient(5px 5px at 88% 30%, rgba(59,130,246,0.6), transparent),
+      radial-gradient(3px 3px at 25% 85%, rgba(139,92,246,0.4), transparent),
+      radial-gradient(4px 4px at 55% 55%, rgba(109,92,255,0.5), transparent),
+      radial-gradient(3px 3px at 3% 35%, rgba(59,130,246,0.4), transparent),
+      radial-gradient(5px 5px at 92% 85%, rgba(109,92,255,0.6), transparent),
+      radial-gradient(4px 4px at 50% 90%, rgba(59,130,246,0.5), transparent),
+      radial-gradient(3px 3px at 82% 50%, rgba(139,92,246,0.4), transparent);
+    background-size: 500px 500px;
+  }
+
+  @keyframes drift {
+    from { transform: translateX(0) translateY(0); }
+    to { transform: translateX(-400px) translateY(-400px); }
+  }
+
+  @keyframes twinkle {
+    0%, 100% { opacity: 0.4; }
+    50% { opacity: 1; }
+  }
+}
