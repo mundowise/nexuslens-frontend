@@ -1,7 +1,7 @@
 :80 {
 	# API proxy FIRST — before file server
 	handle /api/* {
-		reverse_proxy backend:8000
+		reverse_proxy nexuslens-backend-8jsi3h:8000
 	}
 
 	# Static files + SPA fallback for everything else
