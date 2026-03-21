@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'motion/react'
 import { X, FileUp, Loader2, AlertCircle } from 'lucide-react'
 import { Canvas } from '@react-three/fiber'
 import { EffectComposer, Bloom } from '@react-three/postprocessing'
-import { docsApi, connectAnalysisWS } from '@/services/api'
+import { docsApi, pollAnalysisProgress } from '@/services/api'
 import { useDocuments } from '@/stores/documents'
 import { playSound } from '@/services/audio'
 import AnalysisAnimation from '@/components/nexus/AnalysisAnimation'
@@ -31,13 +31,11 @@ export default function UploadModal({ open, onClose }: Props) {
   const [progress, setProgress] = useState<{ step: string; pct: number } | null>(null)
   const [uploadError, setUploadError] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
-  const wsRef = useRef<WebSocket | null>(null)
-  const timeoutRef = useRef<ReturnType<typeof setTimeout>>(null)
+  const stopPollRef = useRef<(() => void) | null>(null)
 
   useEffect(() => {
     return () => {
-      wsRef.current?.close()
-      if (timeoutRef.current) clearTimeout(timeoutRef.current)
+      stopPollRef.current?.()
     }
   }, [])
 
@@ -49,24 +47,12 @@ export default function UploadModal({ open, onClose }: Props) {
     try {
       const { data: doc } = await docsApi.upload(file)
 
-      // WS timeout — if no "done" in 120s, assume it completed
-      timeoutRef.current = setTimeout(async () => {
-        wsRef.current?.close()
-        await fetchDocuments()
-        await fetchGraph()
-        setUploading(false)
-        setProgress(null)
-        playSound('complete')
-        onClose()
-      }, 120000)
-
-      wsRef.current = connectAnalysisWS(doc.id, (msg) => {
+      // Poll for progress every 2 seconds via HTTP (works through Cloudflare)
+      stopPollRef.current = pollAnalysisProgress(doc.id, (msg) => {
         setProgress({ step: msg.step, pct: msg.progress })
-        setAnalysisProgress(msg)
+        setAnalysisProgress({ ...msg, document_id: doc.id })
 
         if (msg.step === 'done') {
-          if (timeoutRef.current) clearTimeout(timeoutRef.current)
-          wsRef.current?.close()
           playSound('complete')
           setTimeout(async () => {
             await fetchDocuments()
@@ -76,6 +62,12 @@ export default function UploadModal({ open, onClose }: Props) {
             setAnalysisProgress(null)
             onClose()
           }, 500)
+        }
+
+        if (msg.step === 'error') {
+          setUploading(false)
+          setProgress(null)
+          setUploadError(t('common.error'))
         }
       })
     } catch {

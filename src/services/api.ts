@@ -93,4 +93,36 @@ export function connectAnalysisWS(
   return ws
 }
 
+/**
+ * Poll analysis progress via HTTP (reliable fallback for WebSocket).
+ * Returns a cleanup function to stop polling.
+ */
+export function pollAnalysisProgress(
+  documentId: string,
+  onProgress: (data: { step: string; progress: number }) => void,
+  intervalMs = 2000,
+): () => void {
+  let active = true
+
+  const poll = async () => {
+    while (active) {
+      try {
+        const { data } = await api.get(`/api/documents/${documentId}/progress`)
+        onProgress(data)
+        if (data.step === 'done' || data.step === 'error') {
+          active = false
+          return
+        }
+      } catch {
+        // ignore polling errors
+      }
+      await new Promise(r => setTimeout(r, intervalMs))
+    }
+  }
+
+  poll()
+
+  return () => { active = false }
+}
+
 export default api
