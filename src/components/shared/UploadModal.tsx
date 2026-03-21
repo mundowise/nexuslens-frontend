@@ -6,6 +6,7 @@ import { Canvas } from '@react-three/fiber'
 import { EffectComposer, Bloom } from '@react-three/postprocessing'
 import { docsApi, pollAnalysisProgress } from '@/services/api'
 import { useDocuments } from '@/stores/documents'
+import { useApp } from '@/stores/app'
 import { playSound } from '@/services/audio'
 import AnalysisAnimation from '@/components/nexus/AnalysisAnimation'
 
@@ -28,6 +29,7 @@ type UploadMode = 'select' | 'single' | 'multi-separate' | 'multi-combined'
 export default function UploadModal({ open, onClose }: Props) {
   const { t } = useTranslation()
   const { fetchDocuments, fetchGraph, setAnalysisProgress } = useDocuments()
+  const { lang } = useApp()
   const [dragging, setDragging] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [progress, setProgress] = useState<{ step: string; pct: number } | null>(null)
@@ -94,7 +96,7 @@ export default function UploadModal({ open, onClose }: Props) {
     for (let i = 0; i < files.length; i++) {
       setProgress({ step: 'parsing', pct: 0 })
       try {
-        const { data: doc } = await docsApi.upload(files[i])
+        const { data: doc } = await docsApi.upload(files[i], lang)
         await waitForAnalysis(doc.id)
         setFilesDone(i + 1)
       } catch {
@@ -125,7 +127,7 @@ export default function UploadModal({ open, onClose }: Props) {
       files.forEach(f => form.append('files', f))
       if (name) form.append('document_name', name)
 
-      const { data: doc } = await docsApi.uploadMulti(form)
+      const { data: doc } = await docsApi.uploadMulti(form, lang)
       await waitForAnalysis(doc.id)
       setFilesDone(1)
 

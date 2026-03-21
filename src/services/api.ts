@@ -42,18 +42,25 @@ export const docsApi = {
     const resp = await api.get(`/api/documents/${id}/file`, { responseType: 'blob' })
     return URL.createObjectURL(resp.data)
   },
-  upload: (file: File) => {
+  upload: (file: File, lang?: string) => {
     const form = new FormData()
     form.append('file', file)
-    return api.post('/api/documents/upload', form, {
+    const params = lang ? `?lang=${lang}` : ''
+    return api.post(`/api/documents/upload${params}`, form, {
       headers: { 'Content-Type': 'multipart/form-data' },
     })
   },
-  uploadMulti: (form: FormData) => {
-    return api.post('/api/documents/upload-multi', form, {
+  uploadMulti: (form: FormData, lang?: string) => {
+    const params = lang ? `?lang=${lang}` : ''
+    return api.post(`/api/documents/upload-multi${params}`, form, {
       headers: { 'Content-Type': 'multipart/form-data' },
     })
   },
+  getFileBlobByPage: async (id: string, page: number): Promise<string> => {
+    const resp = await api.get(`/api/documents/${id}/file?page=${page}`, { responseType: 'blob' })
+    return URL.createObjectURL(resp.data)
+  },
+  getPages: (id: string) => api.get(`/api/documents/${id}/pages`),
   delete: (id: string) => api.delete(`/api/documents/${id}`),
   deleteAll: () => api.delete('/api/documents/all'),
   reanalyze: (id: string) => api.post(`/api/documents/${id}/reanalyze`),

@@ -36,18 +36,48 @@ export default function LensView() {
     }
   }, [current, documents, fetchDocument])
 
+  const [docType, setDocType] = useState<'pdf' | 'images'>('pdf')
+  const [imageUrls, setImageUrls] = useState<string[]>([])
+
   useEffect(() => {
     if (!current) return
     let cancelled = false
     let blobRef: string | null = null
-    docsApi.getFileBlob(current.id).then((url) => {
-      if (cancelled) { URL.revokeObjectURL(url); return }
-      blobRef = url
-      setPdfUrl(url)
-    }).catch(() => setPdfUrl(null))
+
+    // Check if document is multi-page images (manifest) or single PDF
+    docsApi.getPages(current.id).then(({ data }) => {
+      if (cancelled) return
+      if (data.type === 'manifest') {
+        setDocType('images')
+        // Load all page images
+        const promises = Array.from({ length: data.pages }, (_, i) =>
+          docsApi.getFileBlobByPage(current.id, i)
+        )
+        Promise.all(promises).then(urls => {
+          if (!cancelled) setImageUrls(urls)
+        })
+      } else {
+        setDocType('pdf')
+        docsApi.getFileBlob(current.id).then((url) => {
+          if (cancelled) { URL.revokeObjectURL(url); return }
+          blobRef = url
+          setPdfUrl(url)
+        }).catch(() => setPdfUrl(null))
+      }
+    }).catch(() => {
+      // Fallback: try as PDF
+      setDocType('pdf')
+      docsApi.getFileBlob(current.id).then((url) => {
+        if (cancelled) { URL.revokeObjectURL(url); return }
+        blobRef = url
+        setPdfUrl(url)
+      }).catch(() => setPdfUrl(null))
+    })
+
     return () => {
       cancelled = true
       if (blobRef) URL.revokeObjectURL(blobRef)
+      imageUrls.forEach(u => URL.revokeObjectURL(u))
     }
   }, [current?.id])
 
@@ -113,8 +143,31 @@ export default function LensView() {
           <div className="h-full flex items-center justify-center"
             style={{ color: 'var(--color-text-muted)' }}>{t('common.loading')}</div>
         }>
-          <PdfViewer fileUrl={pdfUrl} highlightPage={highlightPage}
-            findings={current.findings} />
+          {docType === 'images' ? (
+            <div className="p-4 space-y-4 overflow-y-auto h-full">
+              {imageUrls.length === 0 ? (
+                <div className="text-center py-8" style={{ color: 'var(--color-text-muted)' }}>
+                  {t('common.loading')}
+                </div>
+              ) : (
+                imageUrls.map((url, i) => (
+                  <div key={i} className="relative">
+                    <div className="text-xs font-mono mb-1 px-2 py-0.5 rounded inline-block"
+                      style={{ background: 'var(--color-surface-1)', color: 'var(--color-text-muted)' }}>
+                      {t('lens.page')} {i + 1}
+                    </div>
+                    <img src={url} alt={`Page ${i + 1}`}
+                      className="w-full rounded-lg border"
+                      style={{ borderColor: highlightPage === i + 1 ? 'var(--color-accent)' : 'var(--color-border)' }}
+                    />
+                  </div>
+                ))
+              )}
+            </div>
+          ) : (
+            <PdfViewer fileUrl={pdfUrl} highlightPage={highlightPage}
+              findings={current.findings} />
+          )}
         </Suspense>
       </div>
 
