@@ -1,18 +1,14 @@
 :80 {
-	root * /srv
-	file_server
-
-	# SPA fallback — all routes go to index.html
-	try_files {path} /index.html
-
-	# API proxy to backend
+	# API proxy FIRST — before file server
 	handle /api/* {
 		reverse_proxy backend:8000
 	}
 
-	# WebSocket proxy
-	handle /api/ws/* {
-		reverse_proxy backend:8000
+	# Static files + SPA fallback for everything else
+	handle {
+		root * /srv
+		try_files {path} /index.html
+		file_server
 	}
 
 	# Cache static assets
