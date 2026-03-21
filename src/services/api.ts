@@ -49,6 +49,11 @@ export const docsApi = {
       headers: { 'Content-Type': 'multipart/form-data' },
     })
   },
+  uploadMulti: (form: FormData) => {
+    return api.post('/api/documents/upload-multi', form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+  },
   delete: (id: string) => api.delete(`/api/documents/${id}`),
   deleteAll: () => api.delete('/api/documents/all'),
   reanalyze: (id: string) => api.post(`/api/documents/${id}/reanalyze`),

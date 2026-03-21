@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { motion, AnimatePresence } from 'motion/react'
-import { X, FileUp, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react'
+import { X, FileUp, Loader2, AlertCircle, CheckCircle2, FileStack, Files } from 'lucide-react'
 import { Canvas } from '@react-three/fiber'
 import { EffectComposer, Bloom } from '@react-three/postprocessing'
 import { docsApi, pollAnalysisProgress } from '@/services/api'
@@ -23,20 +23,20 @@ const stepLabels: Record<string, string> = {
   done: 'upload.done',
 }
 
-interface FileProgress {
-  name: string
-  step: string
-  pct: number
-  status: 'pending' | 'uploading' | 'analyzing' | 'done' | 'error'
-}
+type UploadMode = 'select' | 'single' | 'multi-separate' | 'multi-combined'
 
 export default function UploadModal({ open, onClose }: Props) {
   const { t } = useTranslation()
   const { fetchDocuments, fetchGraph, setAnalysisProgress } = useDocuments()
   const [dragging, setDragging] = useState(false)
   const [uploading, setUploading] = useState(false)
-  const [files, setFiles] = useState<FileProgress[]>([])
+  const [progress, setProgress] = useState<{ step: string; pct: number } | null>(null)
   const [uploadError, setUploadError] = useState('')
+  const [pendingFiles, setPendingFiles] = useState<File[]>([])
+  const [uploadMode, setUploadMode] = useState<UploadMode>('select')
+  const [docName, setDocName] = useState('')
+  const [filesDone, setFilesDone] = useState(0)
+  const [filesTotal, setFilesTotal] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
   const stopPollsRef = useRef<(() => void)[]>([])
 
@@ -46,96 +46,120 @@ export default function UploadModal({ open, onClose }: Props) {
     }
   }, [])
 
-  const currentFile = files.find(f => f.status === 'uploading' || f.status === 'analyzing')
-  const overallPct = files.length > 0
-    ? Math.round(files.reduce((sum, f) => sum + (f.status === 'done' ? 100 : f.pct), 0) / files.length)
-    : 0
+  // Reset state when modal closes
+  useEffect(() => {
+    if (!open) {
+      setPendingFiles([])
+      setUploadMode('select')
+      setDocName('')
+      setUploadError('')
+      setFilesDone(0)
+      setFilesTotal(0)
+    }
+  }, [open])
 
-  const handleFiles = useCallback(async (fileList: File[]) => {
-    if (fileList.length === 0) return
+  const handleFilesSelected = (files: File[]) => {
+    if (files.length === 0) return
 
+    if (files.length === 1) {
+      // Single file — upload directly
+      uploadSeparate(files)
+    } else {
+      // Multiple files — ask user what to do
+      setPendingFiles(files)
+      setUploadMode('select')
+    }
+  }
+
+  const waitForAnalysis = (docId: string): Promise<void> => {
+    return new Promise((resolve) => {
+      const stopPoll = pollAnalysisProgress(docId, (msg) => {
+        setProgress({ step: msg.step, pct: msg.progress })
+        setAnalysisProgress({ ...msg, document_id: docId })
+
+        if (msg.step === 'done' || msg.step === 'error') {
+          resolve()
+        }
+      })
+      stopPollsRef.current.push(stopPoll)
+    })
+  }
+
+  const uploadSeparate = async (files: File[]) => {
     setUploading(true)
     setUploadError('')
+    setFilesTotal(files.length)
+    setFilesDone(0)
 
-    const fileProgresses: FileProgress[] = fileList.map(f => ({
-      name: f.name,
-      step: 'pending',
-      pct: 0,
-      status: 'pending',
-    }))
-    setFiles(fileProgresses)
-
-    for (let i = 0; i < fileList.length; i++) {
-      const file = fileList[i]
-
-      // Update status to uploading
-      setFiles(prev => prev.map((fp, idx) =>
-        idx === i ? { ...fp, status: 'uploading', step: 'parsing', pct: 0 } : fp
-      ))
-
+    for (let i = 0; i < files.length; i++) {
+      setProgress({ step: 'parsing', pct: 0 })
       try {
-        const { data: doc } = await docsApi.upload(file)
-
-        // Update status to analyzing
-        setFiles(prev => prev.map((fp, idx) =>
-          idx === i ? { ...fp, status: 'analyzing', step: 'parsing', pct: 5 } : fp
-        ))
-
-        // Poll progress for this file
-        await new Promise<void>((resolve) => {
-          const stopPoll = pollAnalysisProgress(doc.id, (msg) => {
-            setFiles(prev => prev.map((fp, idx) =>
-              idx === i ? { ...fp, step: msg.step, pct: msg.progress } : fp
-            ))
-            setAnalysisProgress({ ...msg, document_id: doc.id })
-
-            if (msg.step === 'done') {
-              setFiles(prev => prev.map((fp, idx) =>
-                idx === i ? { ...fp, status: 'done', pct: 100 } : fp
-              ))
-              resolve()
-            }
-
-            if (msg.step === 'error') {
-              setFiles(prev => prev.map((fp, idx) =>
-                idx === i ? { ...fp, status: 'error', pct: 0 } : fp
-              ))
-              resolve()
-            }
-          })
-          stopPollsRef.current.push(stopPoll)
-        })
+        const { data: doc } = await docsApi.upload(files[i])
+        await waitForAnalysis(doc.id)
+        setFilesDone(i + 1)
       } catch {
-        setFiles(prev => prev.map((fp, idx) =>
-          idx === i ? { ...fp, status: 'error', step: 'error', pct: 0 } : fp
-        ))
+        setUploadError(`Error subiendo ${files[i].name}`)
       }
     }
 
-    // All files processed
     playSound('complete')
     await fetchDocuments()
     await fetchGraph()
-
     setTimeout(() => {
       setUploading(false)
-      setFiles([])
+      setProgress(null)
       setAnalysisProgress(null)
       onClose()
-    }, 1000)
-  }, [fetchDocuments, fetchGraph, onClose, setAnalysisProgress, t])
+    }, 500)
+  }
+
+  const uploadCombined = async (files: File[], name: string) => {
+    setUploading(true)
+    setUploadError('')
+    setFilesTotal(1)
+    setFilesDone(0)
+    setProgress({ step: 'parsing', pct: 0 })
+
+    try {
+      const form = new FormData()
+      files.forEach(f => form.append('files', f))
+      if (name) form.append('document_name', name)
+
+      const { data: doc } = await docsApi.uploadMulti(form)
+      await waitForAnalysis(doc.id)
+      setFilesDone(1)
+
+      playSound('complete')
+      await fetchDocuments()
+      await fetchGraph()
+      setTimeout(() => {
+        setUploading(false)
+        setProgress(null)
+        setAnalysisProgress(null)
+        onClose()
+      }, 500)
+    } catch {
+      setUploading(false)
+      setProgress(null)
+      setUploadError(t('common.error'))
+    }
+  }
 
   const onDrop = (e: React.DragEvent) => {
     e.preventDefault()
     setDragging(false)
-    const droppedFiles = Array.from(e.dataTransfer.files)
-    if (droppedFiles.length > 0) handleFiles(droppedFiles)
+    const files = Array.from(e.dataTransfer.files)
+    handleFilesSelected(files)
   }
 
   const onSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFiles = Array.from(e.target.files || [])
-    if (selectedFiles.length > 0) handleFiles(selectedFiles)
+    const files = Array.from(e.target.files || [])
+    handleFilesSelected(files)
   }
+
+  const overallPct = filesTotal > 0
+    ? Math.round(((filesDone * 100) + (progress?.pct || 0)) / filesTotal)
+    : progress?.pct || 0
 
   return (
     <AnimatePresence>
@@ -146,12 +170,11 @@ export default function UploadModal({ open, onClose }: Props) {
           exit={{ opacity: 0 }}
           className="fixed inset-0 z-[60] flex items-center justify-center"
           style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }}
-          onClick={!uploading ? onClose : undefined}>
+          onClick={!uploading && pendingFiles.length === 0 ? onClose : undefined}>
 
           <motion.div
             role="dialog"
             aria-modal="true"
-            aria-labelledby="upload-modal-title"
             initial={{ scale: 0.95, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.95, opacity: 0 }}
@@ -159,17 +182,18 @@ export default function UploadModal({ open, onClose }: Props) {
             className="glass w-full max-w-lg mx-4 p-6 relative"
             onClick={(e) => e.stopPropagation()}>
 
-            {!uploading && (
+            {!uploading && pendingFiles.length === 0 && (
               <button onClick={onClose} className="absolute top-4 right-4 p-1 rounded-full btn-ghost">
                 <X size={18} style={{ color: 'var(--color-text-muted)' }} />
               </button>
             )}
 
-            <h2 id="upload-modal-title" className="text-xl font-semibold mb-4" style={{ fontFamily: 'var(--font-display)' }}>
+            <h2 className="text-xl font-semibold mb-4" style={{ fontFamily: 'var(--font-display)' }}>
               {t('upload.title')}
             </h2>
 
-            {!uploading ? (
+            {/* STEP 1: File picker */}
+            {!uploading && pendingFiles.length === 0 && (
               <>
                 <div
                   onDragOver={(e) => { e.preventDefault(); setDragging(true) }}
@@ -193,7 +217,6 @@ export default function UploadModal({ open, onClose }: Props) {
                   <input ref={inputRef} type="file" accept=".pdf,.docx,.doc,.png,.jpg,.jpeg,.tiff,.tif"
                     multiple onChange={onSelect} className="hidden" />
                 </div>
-
                 {uploadError && (
                   <div className="flex items-center gap-2 mt-3 px-3 py-2 rounded-lg"
                     style={{ background: 'rgba(239,68,68,0.1)' }}>
@@ -202,60 +225,129 @@ export default function UploadModal({ open, onClose }: Props) {
                   </div>
                 )}
               </>
-            ) : (
+            )}
+
+            {/* STEP 2: Multiple files — ask user */}
+            {!uploading && pendingFiles.length > 1 && (
+              <div className="space-y-4">
+                <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+                  Has seleccionado <strong>{pendingFiles.length} archivos</strong>. ¿Son paginas de un mismo documento o documentos separados?
+                </p>
+
+                <div className="space-y-2 max-h-32 overflow-y-auto text-xs" style={{ color: 'var(--color-text-muted)' }}>
+                  {pendingFiles.map((f, i) => (
+                    <div key={i} className="flex items-center gap-2">
+                      <FileUp size={12} /> {f.name}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Option 1: Single document */}
+                <button
+                  onClick={() => setUploadMode('multi-combined')}
+                  className="w-full flex items-center gap-3 p-4 rounded-xl border transition-all text-left"
+                  style={{
+                    borderColor: uploadMode === 'multi-combined' ? 'var(--color-accent)' : 'var(--color-border)',
+                    background: uploadMode === 'multi-combined' ? 'rgba(109,92,255,0.08)' : 'transparent',
+                  }}>
+                  <FileStack size={24} style={{ color: 'var(--color-accent)' }} />
+                  <div>
+                    <p className="font-medium text-sm" style={{ color: 'var(--color-text-primary)' }}>
+                      Un solo documento
+                    </p>
+                    <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
+                      Son paginas/fotos del mismo contrato o documento
+                    </p>
+                  </div>
+                </button>
+
+                {/* Option 2: Separate documents */}
+                <button
+                  onClick={() => setUploadMode('multi-separate')}
+                  className="w-full flex items-center gap-3 p-4 rounded-xl border transition-all text-left"
+                  style={{
+                    borderColor: uploadMode === 'multi-separate' ? 'var(--color-accent)' : 'var(--color-border)',
+                    background: uploadMode === 'multi-separate' ? 'rgba(109,92,255,0.08)' : 'transparent',
+                  }}>
+                  <Files size={24} style={{ color: 'var(--color-accent)' }} />
+                  <div>
+                    <p className="font-medium text-sm" style={{ color: 'var(--color-text-primary)' }}>
+                      Documentos separados
+                    </p>
+                    <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
+                      Cada archivo es un documento diferente
+                    </p>
+                  </div>
+                </button>
+
+                {/* Document name input for combined */}
+                {uploadMode === 'multi-combined' && (
+                  <div className="space-y-2">
+                    <label className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+                      Nombre del documento (opcional)
+                    </label>
+                    <input
+                      type="text"
+                      value={docName}
+                      onChange={(e) => setDocName(e.target.value)}
+                      placeholder="Ej: Contrato de arrendamiento"
+                      className="w-full px-3 py-2 rounded-lg text-sm"
+                      style={{
+                        background: 'var(--color-surface-0)',
+                        border: '1px solid var(--color-border)',
+                        color: 'var(--color-text-primary)',
+                      }}
+                    />
+                  </div>
+                )}
+
+                {/* Action buttons */}
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => { setPendingFiles([]); setUploadMode('select') }}
+                    className="px-4 py-2 rounded-lg text-sm btn-ghost">
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (uploadMode === 'multi-combined') {
+                        uploadCombined(pendingFiles, docName)
+                      } else if (uploadMode === 'multi-separate') {
+                        uploadSeparate(pendingFiles)
+                      }
+                    }}
+                    disabled={uploadMode === 'select'}
+                    className="flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-all disabled:opacity-30"
+                    style={{
+                      background: uploadMode !== 'select' ? 'var(--color-accent)' : 'var(--color-fill-subtle)',
+                      color: uploadMode !== 'select' ? '#fff' : 'var(--color-text-muted)',
+                    }}>
+                    Subir {uploadMode === 'multi-combined' ? 'como un documento' : 'por separado'}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* STEP 3: Uploading / analyzing */}
+            {uploading && (
               <div className="py-2">
                 <div className="w-full h-40 rounded-xl overflow-hidden mb-4"
                   style={{ background: 'var(--color-surface-0)' }}>
                   <Canvas camera={{ position: [0, 0, 6], fov: 50 }}>
                     <ambientLight intensity={0.2} />
-                    <AnalysisAnimation progress={currentFile?.pct ?? overallPct} />
+                    <AnalysisAnimation progress={progress?.pct ?? 0} />
                     <EffectComposer>
                       <Bloom intensity={1.2} luminanceThreshold={0.2} mipmapBlur />
                     </EffectComposer>
                   </Canvas>
                 </div>
 
-                {/* File list with individual progress */}
-                <div className="space-y-2 mb-4 max-h-40 overflow-y-auto">
-                  {files.map((fp, i) => (
-                    <div key={i} className="flex items-center gap-2 text-sm">
-                      {fp.status === 'done' ? (
-                        <CheckCircle2 size={14} className="shrink-0" style={{ color: 'var(--color-severity-low)' }} />
-                      ) : fp.status === 'error' ? (
-                        <AlertCircle size={14} className="shrink-0" style={{ color: 'var(--color-severity-critical)' }} />
-                      ) : fp.status === 'analyzing' || fp.status === 'uploading' ? (
-                        <Loader2 size={14} className="shrink-0 animate-spin" style={{ color: 'var(--color-accent)' }} />
-                      ) : (
-                        <div className="w-3.5 h-3.5 shrink-0 rounded-full" style={{ background: 'var(--color-fill-subtle)' }} />
-                      )}
-                      <span className="truncate flex-1" style={{
-                        color: fp.status === 'done' ? 'var(--color-text-muted)' :
-                               fp.status === 'analyzing' || fp.status === 'uploading' ? 'var(--color-text-primary)' :
-                               'var(--color-text-muted)'
-                      }}>
-                        {fp.name}
-                      </span>
-                      {(fp.status === 'analyzing' || fp.status === 'uploading') && (
-                        <span className="text-xs" style={{ color: 'var(--color-accent)', fontFamily: 'var(--font-mono)' }}>
-                          {fp.pct}%
-                        </span>
-                      )}
-                    </div>
-                  ))}
-                </div>
-
-                {/* Current step */}
                 <div className="flex items-center gap-3 mb-3">
                   <Loader2 size={16} className="animate-spin" style={{ color: 'var(--color-accent)' }} />
                   <span className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-                    {currentFile
-                      ? `${t(stepLabels[currentFile.step] ?? 'upload.analyzing')} — ${currentFile.name}`
-                      : t('upload.done')
-                    }
+                    {t(stepLabels[progress?.step ?? 'parsing'] ?? 'upload.analyzing')}
                   </span>
                 </div>
-
-                {/* Overall progress bar */}
                 <div className="w-full h-1.5 rounded-full overflow-hidden"
                   style={{ background: 'var(--color-fill-subtle)' }}>
                   <motion.div
@@ -267,8 +359,16 @@ export default function UploadModal({ open, onClose }: Props) {
                   />
                 </div>
                 <p className="text-right text-xs mt-1" style={{ color: 'var(--color-text-muted)', fontFamily: 'var(--font-mono)' }}>
-                  {files.filter(f => f.status === 'done').length}/{files.length} archivos — {overallPct}%
+                  {filesTotal > 1 ? `${filesDone}/${filesTotal} — ` : ''}{overallPct}%
                 </p>
+
+                {uploadError && (
+                  <div className="flex items-center gap-2 mt-3 px-3 py-2 rounded-lg"
+                    style={{ background: 'rgba(239,68,68,0.1)' }}>
+                    <AlertCircle size={14} style={{ color: 'var(--color-severity-critical)' }} />
+                    <span className="text-sm" style={{ color: 'var(--color-severity-critical)' }}>{uploadError}</span>
+                  </div>
+                )}
               </div>
             )}
           </motion.div>
