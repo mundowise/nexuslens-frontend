@@ -99,7 +99,7 @@ export default function TimelineChart({ events, onEventClick }: Props) {
               )
             }}
           />
-          <Scatter data={data} onClick={(d) => onEventClick?.(d.id)}>
+          <Scatter data={data} onClick={(d: any) => onEventClick?.(d.id)}>
             {data.map((entry, i) => (
               <Cell
                 key={i}

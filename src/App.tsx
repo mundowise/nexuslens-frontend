@@ -22,7 +22,7 @@ function ModeFallback() {
   )
 }
 
-const modeComponents: Record<AppMode, React.LazyExoticComponent<() => JSX.Element>> = {
+const modeComponents: Record<AppMode, React.LazyExoticComponent<React.ComponentType>> = {
   nexus: NexusView,
   lens: LensView,
   timeline: TimelineView,

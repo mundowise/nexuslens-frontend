@@ -1,0 +1,29 @@
+:80 {
+	root * /srv
+	file_server
+
+	# SPA fallback — all routes go to index.html
+	try_files {path} /index.html
+
+	# API proxy to backend
+	handle /api/* {
+		reverse_proxy backend:8000
+	}
+
+	# WebSocket proxy
+	handle /api/ws/* {
+		reverse_proxy backend:8000
+	}
+
+	# Cache static assets
+	@static path *.js *.css *.png *.jpg *.svg *.woff2 *.ico
+	header @static Cache-Control "public, max-age=31536000, immutable"
+
+	# Security headers
+	header {
+		X-Content-Type-Options nosniff
+		X-Frame-Options DENY
+		X-XSS-Protection "1; mode=block"
+		Referrer-Policy strict-origin-when-cross-origin
+	}
+}

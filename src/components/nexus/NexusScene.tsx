@@ -17,7 +17,7 @@ interface Props {
   onNodeClick: (node: GraphNode) => void
   onNodeDoubleClick: (node: GraphNode) => void
   onEdgeClick?: (edgeId: string) => void
-  burst?: { color: string } | null
+  burst?: { color: string; position?: [number, number, number] } | null
   onBurstComplete?: () => void
 }
 
@@ -101,7 +101,7 @@ export default function NexusScene({ graph, onNodeClick, onNodeDoubleClick, onEd
               onClick={() => onEdgeClick?.(edge.id)} />
           ))}
 
-          {burst && <ParticleBurst color={burst.color} onComplete={onBurstComplete} />}
+          {burst && onBurstComplete && <ParticleBurst color={burst.color} position={burst.position ?? [0, 0, 0]} onComplete={onBurstComplete} />}
 
           <CursorGlow />
 

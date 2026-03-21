@@ -41,11 +41,11 @@ export function DocumentPanel({ doc, onClose, onAnalyze }: DocPanelProps) {
             )}
           </div>
 
-          {doc.analysis_json?.summary && (
+          {doc.analysis_json?.summary ? (
             <p className="text-xs leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
               {String(doc.analysis_json.summary)}
             </p>
-          )}
+          ) : null}
 
           <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
             {doc.findings?.length ?? 0} {t('common.findings')}

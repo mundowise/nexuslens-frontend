@@ -1,22 +1,25 @@
-import { useCallback } from 'react'
-import Particles from '@tsparticles/react'
+import { useEffect, useState } from 'react'
+import Particles, { initParticlesEngine } from '@tsparticles/react'
 import { loadSlim } from '@tsparticles/slim'
-import type { Engine } from '@tsparticles/engine'
 import { useApp } from '@/stores/app'
 
 export default function ParticleBackground() {
   const { theme } = useApp()
+  const [ready, setReady] = useState(false)
 
-  const init = useCallback(async (engine: Engine) => {
-    await loadSlim(engine)
+  useEffect(() => {
+    initParticlesEngine(async (engine) => {
+      await loadSlim(engine)
+    }).then(() => setReady(true))
   }, [])
 
   const isDark = theme === 'dark'
 
+  if (!ready) return null
+
   return (
     <Particles
       id="bg-particles"
-      init={init}
       className="fixed inset-0 pointer-events-none"
       style={{ zIndex: 0 }}
       options={{

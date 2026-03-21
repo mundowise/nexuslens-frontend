@@ -181,13 +181,13 @@ export default function LensView() {
           </div>
         </div>
 
-        {current.analysis_json?.summary && (
+        {current.analysis_json?.summary ? (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
             className="glass p-4 text-sm leading-relaxed"
             style={{ color: 'var(--color-text-secondary)' }}>
             {String(current.analysis_json.summary)}
           </motion.div>
-        )}
+        ) : null}
 
         {Object.keys(grouped).length === 0 ? (
           <div className="flex-1 flex items-center justify-center text-sm"
