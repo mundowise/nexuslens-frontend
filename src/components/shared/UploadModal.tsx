@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { motion, AnimatePresence } from 'motion/react'
-import { X, FileUp, Loader2, AlertCircle } from 'lucide-react'
+import { X, FileUp, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react'
 import { Canvas } from '@react-three/fiber'
 import { EffectComposer, Bloom } from '@react-three/postprocessing'
 import { docsApi, pollAnalysisProgress } from '@/services/api'
@@ -23,70 +23,118 @@ const stepLabels: Record<string, string> = {
   done: 'upload.done',
 }
 
+interface FileProgress {
+  name: string
+  step: string
+  pct: number
+  status: 'pending' | 'uploading' | 'analyzing' | 'done' | 'error'
+}
+
 export default function UploadModal({ open, onClose }: Props) {
   const { t } = useTranslation()
   const { fetchDocuments, fetchGraph, setAnalysisProgress } = useDocuments()
   const [dragging, setDragging] = useState(false)
   const [uploading, setUploading] = useState(false)
-  const [progress, setProgress] = useState<{ step: string; pct: number } | null>(null)
+  const [files, setFiles] = useState<FileProgress[]>([])
   const [uploadError, setUploadError] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
-  const stopPollRef = useRef<(() => void) | null>(null)
+  const stopPollsRef = useRef<(() => void)[]>([])
 
   useEffect(() => {
     return () => {
-      stopPollRef.current?.()
+      stopPollsRef.current.forEach(stop => stop())
     }
   }, [])
 
-  const handleFile = useCallback(async (file: File) => {
+  const currentFile = files.find(f => f.status === 'uploading' || f.status === 'analyzing')
+  const overallPct = files.length > 0
+    ? Math.round(files.reduce((sum, f) => sum + (f.status === 'done' ? 100 : f.pct), 0) / files.length)
+    : 0
+
+  const handleFiles = useCallback(async (fileList: File[]) => {
+    if (fileList.length === 0) return
+
     setUploading(true)
-    setProgress({ step: 'parsing', pct: 0 })
     setUploadError('')
 
-    try {
-      const { data: doc } = await docsApi.upload(file)
+    const fileProgresses: FileProgress[] = fileList.map(f => ({
+      name: f.name,
+      step: 'pending',
+      pct: 0,
+      status: 'pending',
+    }))
+    setFiles(fileProgresses)
 
-      // Poll for progress every 2 seconds via HTTP (works through Cloudflare)
-      stopPollRef.current = pollAnalysisProgress(doc.id, (msg) => {
-        setProgress({ step: msg.step, pct: msg.progress })
-        setAnalysisProgress({ ...msg, document_id: doc.id })
+    for (let i = 0; i < fileList.length; i++) {
+      const file = fileList[i]
 
-        if (msg.step === 'done') {
-          playSound('complete')
-          setTimeout(async () => {
-            await fetchDocuments()
-            await fetchGraph()
-            setUploading(false)
-            setProgress(null)
-            setAnalysisProgress(null)
-            onClose()
-          }, 500)
-        }
+      // Update status to uploading
+      setFiles(prev => prev.map((fp, idx) =>
+        idx === i ? { ...fp, status: 'uploading', step: 'parsing', pct: 0 } : fp
+      ))
 
-        if (msg.step === 'error') {
-          setUploading(false)
-          setProgress(null)
-          setUploadError(t('common.error'))
-        }
-      })
-    } catch {
-      setUploading(false)
-      setProgress(null)
-      setUploadError(t('common.error'))
+      try {
+        const { data: doc } = await docsApi.upload(file)
+
+        // Update status to analyzing
+        setFiles(prev => prev.map((fp, idx) =>
+          idx === i ? { ...fp, status: 'analyzing', step: 'parsing', pct: 5 } : fp
+        ))
+
+        // Poll progress for this file
+        await new Promise<void>((resolve) => {
+          const stopPoll = pollAnalysisProgress(doc.id, (msg) => {
+            setFiles(prev => prev.map((fp, idx) =>
+              idx === i ? { ...fp, step: msg.step, pct: msg.progress } : fp
+            ))
+            setAnalysisProgress({ ...msg, document_id: doc.id })
+
+            if (msg.step === 'done') {
+              setFiles(prev => prev.map((fp, idx) =>
+                idx === i ? { ...fp, status: 'done', pct: 100 } : fp
+              ))
+              resolve()
+            }
+
+            if (msg.step === 'error') {
+              setFiles(prev => prev.map((fp, idx) =>
+                idx === i ? { ...fp, status: 'error', pct: 0 } : fp
+              ))
+              resolve()
+            }
+          })
+          stopPollsRef.current.push(stopPoll)
+        })
+      } catch {
+        setFiles(prev => prev.map((fp, idx) =>
+          idx === i ? { ...fp, status: 'error', step: 'error', pct: 0 } : fp
+        ))
+      }
     }
+
+    // All files processed
+    playSound('complete')
+    await fetchDocuments()
+    await fetchGraph()
+
+    setTimeout(() => {
+      setUploading(false)
+      setFiles([])
+      setAnalysisProgress(null)
+      onClose()
+    }, 1000)
   }, [fetchDocuments, fetchGraph, onClose, setAnalysisProgress, t])
 
   const onDrop = (e: React.DragEvent) => {
     e.preventDefault()
     setDragging(false)
-    const file = e.dataTransfer.files[0]
-    if (file) handleFile(file)
+    const droppedFiles = Array.from(e.dataTransfer.files)
+    if (droppedFiles.length > 0) handleFiles(droppedFiles)
   }
 
   const onSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file) handleFile(file)
+    const selectedFiles = Array.from(e.target.files || [])
+    if (selectedFiles.length > 0) handleFiles(selectedFiles)
   }
 
   return (
@@ -139,8 +187,11 @@ export default function UploadModal({ open, onClose }: Props) {
                     {t('upload.or')} <span className="underline">{t('upload.browse')}</span>
                   </p>
                   <p className="text-xs mt-2" style={{ color: 'var(--color-text-muted)' }}>{t('upload.formats')}</p>
+                  <p className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>
+                    Puedes seleccionar multiples archivos
+                  </p>
                   <input ref={inputRef} type="file" accept=".pdf,.docx,.doc,.png,.jpg,.jpeg,.tiff,.tif"
-                    onChange={onSelect} className="hidden" />
+                    multiple onChange={onSelect} className="hidden" />
                 </div>
 
                 {uploadError && (
@@ -153,35 +204,70 @@ export default function UploadModal({ open, onClose }: Props) {
               </>
             ) : (
               <div className="py-2">
-                <div className="w-full h-48 rounded-xl overflow-hidden mb-4"
+                <div className="w-full h-40 rounded-xl overflow-hidden mb-4"
                   style={{ background: 'var(--color-surface-0)' }}>
                   <Canvas camera={{ position: [0, 0, 6], fov: 50 }}>
                     <ambientLight intensity={0.2} />
-                    <AnalysisAnimation progress={progress?.pct ?? 0} />
+                    <AnalysisAnimation progress={currentFile?.pct ?? overallPct} />
                     <EffectComposer>
                       <Bloom intensity={1.2} luminanceThreshold={0.2} mipmapBlur />
                     </EffectComposer>
                   </Canvas>
                 </div>
 
+                {/* File list with individual progress */}
+                <div className="space-y-2 mb-4 max-h-40 overflow-y-auto">
+                  {files.map((fp, i) => (
+                    <div key={i} className="flex items-center gap-2 text-sm">
+                      {fp.status === 'done' ? (
+                        <CheckCircle2 size={14} className="shrink-0" style={{ color: 'var(--color-severity-low)' }} />
+                      ) : fp.status === 'error' ? (
+                        <AlertCircle size={14} className="shrink-0" style={{ color: 'var(--color-severity-critical)' }} />
+                      ) : fp.status === 'analyzing' || fp.status === 'uploading' ? (
+                        <Loader2 size={14} className="shrink-0 animate-spin" style={{ color: 'var(--color-accent)' }} />
+                      ) : (
+                        <div className="w-3.5 h-3.5 shrink-0 rounded-full" style={{ background: 'var(--color-fill-subtle)' }} />
+                      )}
+                      <span className="truncate flex-1" style={{
+                        color: fp.status === 'done' ? 'var(--color-text-muted)' :
+                               fp.status === 'analyzing' || fp.status === 'uploading' ? 'var(--color-text-primary)' :
+                               'var(--color-text-muted)'
+                      }}>
+                        {fp.name}
+                      </span>
+                      {(fp.status === 'analyzing' || fp.status === 'uploading') && (
+                        <span className="text-xs" style={{ color: 'var(--color-accent)', fontFamily: 'var(--font-mono)' }}>
+                          {fp.pct}%
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Current step */}
                 <div className="flex items-center gap-3 mb-3">
                   <Loader2 size={16} className="animate-spin" style={{ color: 'var(--color-accent)' }} />
                   <span className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-                    {t(stepLabels[progress?.step ?? 'parsing'] ?? 'upload.analyzing')}
+                    {currentFile
+                      ? `${t(stepLabels[currentFile.step] ?? 'upload.analyzing')} — ${currentFile.name}`
+                      : t('upload.done')
+                    }
                   </span>
                 </div>
+
+                {/* Overall progress bar */}
                 <div className="w-full h-1.5 rounded-full overflow-hidden"
                   style={{ background: 'var(--color-fill-subtle)' }}>
                   <motion.div
                     className="h-full rounded-full"
                     style={{ background: 'var(--color-accent)' }}
                     initial={{ width: 0 }}
-                    animate={{ width: `${progress?.pct ?? 0}%` }}
+                    animate={{ width: `${overallPct}%` }}
                     transition={{ duration: 0.4, ease: 'easeOut' }}
                   />
                 </div>
                 <p className="text-right text-xs mt-1" style={{ color: 'var(--color-text-muted)', fontFamily: 'var(--font-mono)' }}>
-                  {progress?.pct ?? 0}%
+                  {files.filter(f => f.status === 'done').length}/{files.length} archivos — {overallPct}%
                 </p>
               </div>
             )}
